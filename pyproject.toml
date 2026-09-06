@@ -34,3 +34,6 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+    "network: 真实网络端到端测试（可能被反爬/网络环境影响）",
+]

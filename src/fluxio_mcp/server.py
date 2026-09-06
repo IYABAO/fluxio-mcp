@@ -8,14 +8,16 @@ from typing import Annotated
 import httpx
 from fastmcp import FastMCP
 
+from .markdown import html_to_markdown
 from .rss import parse_rss
+from .search import search_web as _search_web
 from .web import DEFAULT_UA, extract_web, fetch_html
 
 mcp = FastMCP(
     "fluxio-mcp",
     instructions=(
-        "信息获取工具集：解析 RSS/Atom 订阅源、抓取网页并提取正文。"
-        "适用于让 LLM 读取资讯、博客、文档等网页内容。"
+        "信息获取工具集：解析 RSS/Atom 订阅源、抓取网页并提取正文、"
+        "网页转 Markdown、网页搜索。适用于让 LLM 读取资讯、博客、文档等网页内容。"
     ),
 )
 
@@ -91,6 +93,68 @@ def fetch_web(
 
     head = f"标题：{title}\n来源：{url}\n\n"
     return head + text
+
+
+@mcp.tool()
+def fetch_web_md(
+    url: str,
+    max_chars: Annotated[int, "返回 Markdown 最大字符数，500-200000，默认 15000"] = 15000,
+) -> str:
+    """抓取一个网页并转换为 Markdown（保留标题层级/列表/代码块/链接/图片/表格）。
+
+    参数:
+        url: 网页地址，如 https://www.plbear.com/
+        max_chars: 返回 Markdown 的最大字符数
+
+    返回:
+        页面标题 + Markdown 正文（比纯文本更适合喂给 LLM / 文档化场景）。
+    """
+    max_chars = max(500, min(int(max_chars), _MAX_HTML))
+    try:
+        html = fetch_html(url)
+    except httpx.HTTPError as e:
+        return f"抓取网页失败：{type(e).__name__}: {e}"
+    except ValueError as e:
+        return f"抓取网页失败：{e}"
+
+    soup_md = html_to_markdown(html)
+    if not soup_md:
+        return "未能提取到正文（页面可能为 JS 动态渲染或反爬）"
+
+    title = extract_web(html, url=url, max_chars=200)["title"]
+    if len(soup_md) > max_chars:
+        soup_md = soup_md[:max_chars] + "\n…（Markdown 已截断）"
+
+    head = f"标题：{title}\n来源：{url}\n\n"
+    return head + soup_md
+
+
+@mcp.tool()
+def search_web(
+    query: str,
+    max_results: Annotated[int, "最多返回结果数，1-20，默认 8"] = 8,
+) -> str:
+    """搜索网页，返回 标题/链接/摘要 列表（免 API Key，基于 DuckDuckGo）。
+
+    参数:
+        query: 搜索关键词
+        max_results: 最多返回的结果条数
+
+    返回:
+        纯文本结果列表，每条包含 标题、链接、摘要。
+    """
+    data = _search_web(query, max_results=max_results)
+    results = data.get("results", [])
+    if not results:
+        return data.get("error", f"未搜索到「{query}」相关结果")
+
+    lines = [f"搜索：{query}\n"]
+    for i, r in enumerate(results, 1):
+        lines.append(f"{i}. {r['title']}")
+        lines.append(f"   链接：{r['url']}")
+        if r.get("snippet"):
+            lines.append(f"   摘要：{r['snippet'][:200]}")
+    return "\n".join(lines)
 
 
 @mcp.resource("rss://{url}")
