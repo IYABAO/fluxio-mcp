@@ -8,6 +8,7 @@ from typing import Annotated
 import httpx
 from fastmcp import FastMCP
 
+from .batch import fetch_urls as _fetch_urls
 from .markdown import html_to_markdown
 from .rss import parse_rss
 from .search import search_web as _search_web
@@ -155,6 +156,36 @@ def search_web(
         if r.get("snippet"):
             lines.append(f"   摘要：{r['snippet'][:200]}")
     return "\n".join(lines)
+
+
+@mcp.tool()
+def fetch_urls(
+    urls: list[str],
+    mode: Annotated[str, "输出格式：text=纯文本正文，markdown=Markdown正文"] = "text",
+    max_chars: Annotated[int, "每个条目的最大字符数，500-20000，默认 3000"] = 3000,
+) -> str:
+    """批量抓取多个网页，返回每个的标题与正文摘要（单点失败不影响整体）。
+
+    参数:
+        urls: URL 列表（最多 5 个）
+        mode: "text" 或 "markdown"
+        max_chars: 每个条目的最大字符数
+
+    返回:
+        逐条列出每个 URL 的 标题 + 正文（失败的条目标注原因）。
+    """
+    data = _fetch_urls(urls, mode=mode, max_chars=max_chars)
+    lines: list[str] = [f"批量抓取 {len(data['results'])} 个网页（模式：{mode}）\n"]
+    for i, r in enumerate(data["results"], 1):
+        if r.get("ok"):
+            lines.append(f"{i}. ✅ {r['title']}")
+            lines.append(f"   {r['url']}")
+            lines.append(f"   {r['content'][:400]}")
+        else:
+            lines.append(f"{i}. ❌ {r['url']}")
+            lines.append(f"   {r.get('error', '未知错误')}")
+        lines.append("")
+    return "\n".join(lines).rstrip()
 
 
 @mcp.resource("rss://{url}")
