@@ -17,17 +17,20 @@ flowchart LR
     B -- Tools --> D[fetch_web]
     B -- Tools --> E[fetch_web_md]
     B -- Tools --> F[search_web]
-    B -- Resource --> G["rss://{url}"]
+    B -- Tools --> G[fetch_urls]
+    B -- Resource --> G2["rss://{url}"]
     C -- HTTP --> H[RSS/Atom 订阅源]
     D -- HTTP --> I[任意网页]
     E -- HTTP --> I
     F -- HTTP --> J[Bing / DuckDuckGo]
+    G -- HTTP --> I
 ```
 
 - `fetch_rss(url, limit)`：解析 RSS 2.0 / Atom，返回文章列表（标题/链接/时间/摘要）
 - `fetch_web(url, max_chars)`：抓取网页并提取正文纯文本，自动去除导航/脚本/样式噪音
 - `fetch_web_md(url, max_chars)`：抓取网页并**转换为 Markdown**（保留标题层级/列表/代码块/链接/图片/表格）
 - `search_web(query, max_results)`：**网页搜索**（Bing 主端点国内可直连，DuckDuckGo 海外降级，免 API Key）
+- `fetch_urls(urls, mode, max_chars)`：**批量抓取**（最多 5 个 URL，单点失败隔离，text/markdown 双模式）
 - `rss://{url}`：订阅源资源，`rss://<地址>` 返回最近 15 篇
 
 ## 快速开始
@@ -111,7 +114,7 @@ CI 会在每次 push/PR 时对 Python 3.10/3.11/3.12 自动运行全部测试。
 
 - [x] `search_web`：网页搜索工具（Bing 主端点 + DuckDuckGo 降级，免 API Key）
 - [x] 网页转 Markdown（保留标题层级/列表/代码块/图片/表格）
-- [ ] 多 URL 批量抓取
+- [x] 多 URL 批量抓取（`fetch_urls`：单点失败隔离，text/markdown 双模式）
 - [ ] 发布到 PyPI
 
 ## License
