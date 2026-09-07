@@ -20,15 +20,19 @@ def test_fetch_urls_bad_url_returns_error_entry():
 
 @pytest.mark.network
 def test_fetch_urls_real():
-    """真实网络：两个可用站点 + 一个无效站，验证单点失败不影响整体。"""
+    """真实网络：两个可用站点 + 一个无效站，验证单点失败不影响整体。
+
+    用国际稳定站点（example.com / python.org），避免 CI runner 环境
+    访问国内站点不稳定导致偶发失败。
+    """
     data = fetch_urls(
-        ["https://www.ruanyifeng.com/blog/", "https://this-domain-should-not-exist-xyz123.com/", "https://www.plbear.com/"],
+        ["https://example.com/", "https://this-domain-should-not-exist-xyz123.com/", "https://www.python.org/"],
         mode="markdown",
         max_chars=800,
     )
     results = data["results"]
     assert len(results) == 3
     ok_count = sum(1 for r in results if r["ok"])
-    # 至少阮一峰和 plbear 成功
+    # 至少 example.com 和 python.org 成功
     assert ok_count >= 2
     assert any(r["ok"] is False for r in results)  # 无效站走错误分支
