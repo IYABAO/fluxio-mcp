@@ -21,4 +21,6 @@ jobs:
       - name: Install package
         run: pip install -e .[dev]
       - name: Run tests
-        run: pytest
+        # 网络用例依赖 example.com / python.org，runner 出网抖动会造成假失败；
+        # 单测必须稳定，网络冒烟在本地用 `pytest -m network` 单独跑。
+        run: pytest -m "not network"

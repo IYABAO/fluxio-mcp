@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fluxio-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "信息获取 MCP Server：RSS 订阅解析 + 网页正文提取，让 Claude/Cursor 等 LLM 客户端直接读取任意信息源"
 readme = "README.md"
 requires-python = ">=3.10"

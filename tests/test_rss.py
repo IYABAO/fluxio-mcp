@@ -1,4 +1,6 @@
-from fluxio_mcp.rss import parse_rss
+import pytest
+
+from fluxio_mcp.rss import RSSParseError, parse_rss
 
 RSS_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"><channel>
@@ -61,3 +63,36 @@ def test_parse_limit():
 def test_parse_invalid_returns_empty():
     assert parse_rss("<not-xml>") == []
     assert parse_rss("") == []
+
+
+def test_strict_invalid_xml_raises_with_reason():
+    with pytest.raises(RSSParseError, match="XML 解析失败"):
+        parse_rss("<not-xml>", strict=True)
+
+
+def test_strict_html_page_is_rejected():
+    page = "<!DOCTYPE html><html><head><title>首页</title></head><body>hi</body></html>"
+    with pytest.raises(RSSParseError, match="网页"):
+        parse_rss(page, strict=True)
+
+
+def test_strict_empty_feed_returns_empty_list():
+    empty_feed = '<?xml version="1.0"?><rss version="2.0"><channel><title>空源</title></channel></rss>'
+    assert parse_rss(empty_feed, strict=True) == []
+
+
+def test_summary_html_is_stripped():
+    feed = """<?xml version="1.0"?><rss version="2.0"><channel>
+      <item>
+        <title>带标签的摘要</title>
+        <link>https://example.com/tagged</link>
+        <description><![CDATA[<p>摘要&nbsp;<b>内容</b></p>]]></description>
+      </item>
+    </channel></rss>"""
+    articles = parse_rss(feed)
+    assert articles[0].summary == "摘要 内容"
+    assert "<p>" not in articles[0].summary
+
+
+def test_utf8_bom_feed_parses():
+    assert len(parse_rss("\ufeff" + RSS_XML)) == 2

@@ -10,7 +10,7 @@ from fastmcp import FastMCP
 
 from .batch import fetch_urls as _fetch_urls
 from .markdown import html_to_markdown
-from .rss import parse_rss
+from .rss import RSSParseError, parse_rss
 from .search import search_web as _search_web
 from .web import DEFAULT_UA, extract_web, fetch_html
 
@@ -48,9 +48,12 @@ def fetch_rss(
     except ValueError as e:
         return f"抓取订阅源失败：{e}"
 
-    articles = parse_rss(xml, limit=limit)
+    try:
+        articles = parse_rss(xml, limit=limit, strict=True)
+    except RSSParseError as e:
+        return f"解析订阅源失败：{e}"
     if not articles:
-        return "未解析到文章（请确认该地址是有效的 RSS/Atom 订阅源）"
+        return "订阅源可解析，但没有文章条目（可能是空源，或条目缺少标题/链接）"
 
     lines = [f"订阅源：{url}\n"]
     for i, a in enumerate(articles, 1):
